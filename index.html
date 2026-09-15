@@ -12,6 +12,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Space+Mono:wght@400;700&family=Work+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
   :root{
     --bg: #241a12;
@@ -687,6 +688,9 @@
     font-size:10px;
     opacity:0.7;
   }
+  .loc-hint{ font-size:13px; color:var(--cream-dim); margin:6px 0 0; }
+  .loc-map{ height:260px; width:100%; border-radius:12px; margin:8px 0; border:1px solid var(--line); z-index:0; }
+  .leaflet-container{ background:#2f2318; }
 </style>
 </head>
 <body>
@@ -865,6 +869,8 @@
     <input type="text" id="numero" placeholder="Ex: 123, 45B, S/N" inputmode="numeric">
 
     <label for="localizacao">📍 Localização (Google Maps)</label>
+    <p class="loc-hint">Toque no mapa para marcar o ponto de entrega (arraste o pino para ajustar).</p>
+    <div id="map" class="loc-map"></div>
     <div class="cep-row">
       <input type="text" id="localizacao" placeholder="Cole o link do Maps ou toque no botão →">
       <button type="button" class="cep-btn" id="loc-btn">📍 Usar GPS</button>
@@ -922,6 +928,7 @@
   </p>
 </footer>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
   const WHATSAPP_NUMBER = "5561982116291";
 
@@ -1299,6 +1306,13 @@ const lanchinhoImages = {
     products.forEach(p => {
       const container = document.getElementById(p.listEl);
       if(!container){ console.warn("Container não encontrado:", p.listEl); return; }
+      // Atualiza o preço exibido no título do produto conforme o vendedor
+      const _head = container.previousElementSibling;
+      const _meta = _head && _head.querySelector(".brand-meta");
+      if(_meta){
+        const _bolds = _meta.querySelectorAll("b");
+        if(_bolds.length >= 2){ _bolds[1].textContent = fmt(p.price); }
+      }
       container.innerHTML = "";
       p.flavors.forEach(flavor => {
         const k = keyOf(p.brand, flavor);
@@ -1438,6 +1452,40 @@ const lanchinhoImages = {
   }
   // ────────────────────────────────────────────────────────
 
+  // Mapa interativo (sem GPS) — toque para marcar o local de entrega
+  (function(){
+    var mapEl = document.getElementById("map");
+    if(!mapEl || typeof L === "undefined") return;
+    var inicio = [-15.7942, -47.8822]; // Brasília / DF
+    var map = L.map("map").setView(inicio, 11);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: "&copy; OpenStreetMap"
+    }).addTo(map);
+    var marker = null;
+    function atualizarLink(lat, lng){
+      var link = "https://www.google.com/maps?q=" + lat.toFixed(6) + "," + lng.toFixed(6);
+      var campo = document.getElementById("localizacao");
+      if(campo) campo.value = link;
+      var status = document.getElementById("loc-status");
+      if(status){ status.style.color = "var(--freetaz-green)"; status.textContent = "✅ Local marcado no mapa!"; }
+    }
+    function setPonto(lat, lng){
+      if(marker){ marker.setLatLng([lat, lng]); }
+      else {
+        marker = L.marker([lat, lng], { draggable: true }).addTo(map);
+        marker.on("dragend", function(){ var p = marker.getLatLng(); atualizarLink(p.lat, p.lng); });
+      }
+      atualizarLink(lat, lng);
+    }
+    map.on("click", function(e){ setPonto(e.latlng.lat, e.latlng.lng); });
+    window._solSetPonto = setPonto;
+    window._solIrPara = function(lat, lng){ setPonto(lat, lng); map.setView([lat, lng], 16); };
+    window._solMapRefresh = function(){ map.invalidateSize(); };
+    setTimeout(function(){ map.invalidateSize(); }, 300);
+    window.addEventListener("resize", function(){ map.invalidateSize(); });
+  })();
+
   // Botão: capturar localização via GPS e gerar link do Google Maps
   document.getElementById("loc-btn").addEventListener("click", () => {
     const status = document.getElementById("loc-status");
@@ -1454,6 +1502,7 @@ const lanchinhoImages = {
         const lat = pos.coords.latitude.toFixed(6);
         const lng = pos.coords.longitude.toFixed(6);
         input.value = `https://www.google.com/maps?q=${lat},${lng}`;
+        if(window._solIrPara){ window._solIrPara(parseFloat(lat), parseFloat(lng)); }
         status.style.color = "var(--freetaz-green)";
         status.textContent = "✅ Localização capturada!";
       },
@@ -1582,6 +1631,7 @@ const lanchinhoImages = {
     document.getElementById("products-area").classList.add("unlocked");
     document.getElementById("vendor-pin").classList.remove("active");
     render();
+    if(window._solMapRefresh){ setTimeout(window._solMapRefresh, 250); }
   }
 
   document.getElementById("vendor-select").addEventListener("change", (e) => {
