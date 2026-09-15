@@ -864,6 +864,13 @@
     <label for="numero">Número</label>
     <input type="text" id="numero" placeholder="Ex: 123, 45B, S/N" inputmode="numeric">
 
+    <label for="localizacao">📍 Localização (Google Maps)</label>
+    <div class="cep-row">
+      <input type="text" id="localizacao" placeholder="Cole o link do Maps ou toque no botão →">
+      <button type="button" class="cep-btn" id="loc-btn">📍 Usar GPS</button>
+    </div>
+    <p class="cep-status" id="loc-status"></p>
+
     <label for="whatsapp-cliente">WhatsApp do cliente</label>
     <input type="tel" id="whatsapp-cliente" placeholder="Ex: (61) 99999-9999" inputmode="tel">
 
@@ -1040,12 +1047,12 @@ const lanchinhoImages = {
   // Tabela de preços por vendedor
   const vendorPrices = {
     balcao: {
-      kro: 35.50,
-      kro_bacon: 64.00,
-      freetaz: 77.00,
+      kro: 39.00,
+      kro_bacon: 71.00,
+      freetaz: 85.00,
       pelitas: 40.00,
-      palha: 97.00,
-      onion: 64.00,
+      palha: 106.00,
+      onion: 71.00,
       miliopa: 68.60,
       miliopa45g: 13.60,
       pururuca: 22.50,
@@ -1056,12 +1063,12 @@ const lanchinhoImages = {
       pimentinha: 18.00
     },
     marcus: {
-      kro: 33.50,
-      kro_bacon: 64.00,
-      freetaz: 77.00,
+      kro: 39.00,
+      kro_bacon: 71.00,
+      freetaz: 85.00,
       pelitas: 40.00,
-      palha: 97.00,
-      onion: 64.00,
+      palha: 106.00,
+      onion: 71.00,
       miliopa: 68.60,
       miliopa45g: 13.60,
       pururuca: 22.50,
@@ -1072,12 +1079,12 @@ const lanchinhoImages = {
       pimentinha: 18.00
     },
     daniel: {
-      kro: 33.50,
-      kro_bacon: 64.00,
-      freetaz: 77.00,
+      kro: 39.00,
+      kro_bacon: 71.00,
+      freetaz: 85.00,
       pelitas: 40.00,
-      palha: 97.00,
-      onion: 64.00,
+      palha: 106.00,
+      onion: 71.00,
       miliopa: 68.60,
       miliopa45g: 13.60,
       pururuca: 22.50,
@@ -1088,12 +1095,12 @@ const lanchinhoImages = {
       pimentinha: 18.00
     },
     josue: {
-      kro: 36.00,
-      kro_bacon: 67.00,
-      freetaz: 80.00,
+      kro: 40.00,
+      kro_bacon: 73.00,
+      freetaz: 87.00,
       pelitas: 42.00,
-      palha: 99.00,
-      onion: 70.00,
+      palha: 107.00,
+      onion: 75.00,
       miliopa: 70.00,
       miliopa45g: 17.00,
       pururuca: 23.00,
@@ -1104,12 +1111,12 @@ const lanchinhoImages = {
       pimentinha: 19.00
     },
     iraci: {
-      kro: 36.00,
-      kro_bacon: 72.00,
-      freetaz: 80.00,
+      kro: 39.00,
+      kro_bacon: 71.00,
+      freetaz: 85.00,
       pelitas: 40.00,
-      palha: 99.00,
-      onion: 70.00,
+      palha: 106.00,
+      onion: 71.00,
       miliopa: 70.00,
       miliopa45g: 70.00,
       pururuca: 23.00,
@@ -1120,12 +1127,12 @@ const lanchinhoImages = {
       pimentinha: 19.00
     },
     helton: {
-      kro: 36.30,
-      kro_bacon: 72.00,
-      freetaz: 77.00,
+      kro: 39.00,
+      kro_bacon: 71.00,
+      freetaz: 85.00,
       pelitas: 40.00,
-      palha: 99.00,
-      onion: 70.00,
+      palha: 106.00,
+      onion: 71.00,
       miliopa: 70.00,
       miliopa45g: 14.00,
       pururuca: 23.00,
@@ -1431,6 +1438,33 @@ const lanchinhoImages = {
   }
   // ────────────────────────────────────────────────────────
 
+  // Botão: capturar localização via GPS e gerar link do Google Maps
+  document.getElementById("loc-btn").addEventListener("click", () => {
+    const status = document.getElementById("loc-status");
+    const input  = document.getElementById("localizacao");
+    if(!navigator.geolocation){
+      status.style.color = "var(--kro-red)";
+      status.textContent = "Seu aparelho não permite localização automática. Cole o link do Maps manualmente.";
+      return;
+    }
+    status.style.color = "var(--cream-dim)";
+    status.textContent = "📍 Obtendo localização...";
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude.toFixed(6);
+        const lng = pos.coords.longitude.toFixed(6);
+        input.value = `https://www.google.com/maps?q=${lat},${lng}`;
+        status.style.color = "var(--freetaz-green)";
+        status.textContent = "✅ Localização capturada!";
+      },
+      (err) => {
+        status.style.color = "var(--kro-red)";
+        status.textContent = "❌ Não foi possível obter a localização. Ative o GPS e permita o acesso, ou cole o link manualmente.";
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  });
+
   document.getElementById("send-btn").addEventListener("click", () => {
     if(!currentVendor){
       alert("Por favor, escolha um vendedor primeiro.");
@@ -1445,6 +1479,7 @@ const lanchinhoImages = {
     const numero = document.getElementById("numero").value.trim();
     const whatsappCliente = document.getElementById("whatsapp-cliente").value.trim();
     const obs = document.getElementById("obs").value.trim();
+    const localizacao = document.getElementById("localizacao").value.trim();
 
     if(!nome){
       document.getElementById("nome").focus();
@@ -1466,6 +1501,9 @@ const lanchinhoImages = {
     } else if(numero){
       msg += `*Número:* ${numero}\n`;
     }
+    if(localizacao){
+      msg += `*📍 Localização:* ${localizacao}\n`;
+    }
     msg += `\n`;
 
     let currentBrand = "";
@@ -1480,6 +1518,11 @@ const lanchinhoImages = {
     });
 
     msg += `\n*Total: R$ ${fmt(total)}*`;
+
+    const chavePixMsg = (document.getElementById("pix-key")?.textContent || "").trim();
+    if(chavePixMsg){
+      msg += `\n*Chave Pix (CNPJ):* ${chavePixMsg}`;
+    }
 
     if(obs){
       msg += `\n\n*Obs:* ${obs}`;
@@ -1635,7 +1678,27 @@ const lanchinhoImages = {
     }
   };
 
-  render();
+  // === Vendedor pelo link (página única) ===
+  (function(){
+    function getVendorFromURL(){
+      var params = new URLSearchParams(window.location.search);
+      var v = params.get("v") || params.get("vendor");
+      if(!v){
+        var h = (window.location.hash || "").replace("#","");
+        if(h) v = h;
+      }
+      return v ? v.toLowerCase().trim() : "";
+    }
+    var LOCKED = getVendorFromURL();
+    if(LOCKED && vendors[LOCKED]){
+      var selector = document.querySelector(".vendor-selector");
+      if(selector) selector.style.display = "none";
+      selectedVendorKey = LOCKED;
+      unlockVendor(LOCKED);
+    } else {
+      render();
+    }
+  })();
 </script>
 
 </body>
