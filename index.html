@@ -864,6 +864,9 @@
     <label for="numero">Número</label>
     <input type="text" id="numero" placeholder="Ex: 123, 45B, S/N" inputmode="numeric">
 
+    <label for="cidade">Cidade</label>
+    <input type="text" id="cidade" placeholder="Ex: Brasília, Samambaia...">
+
     <label for="localizacao">📍 Localização do comércio</label>
     <div class="cep-row">
       <input type="text" id="localizacao" placeholder="Toque no botão para enviar a localização →">
@@ -1432,8 +1435,10 @@ const lanchinhoImages = {
         cepStatus.textContent = "CEP não encontrado. Tente outro ou digite o endereço manualmente.";
         return;
       }
-      const partes = [data.logradouro, data.bairro, `${data.localidade} - ${data.uf}`].filter(Boolean);
+      const partes = [data.logradouro, data.bairro].filter(Boolean);
       endInput.value = partes.join(", ");
+      const cidadeInput = document.getElementById("cidade");
+      if(cidadeInput){ cidadeInput.value = `${data.localidade} - ${data.uf}`; }
       cepStatus.style.color = "var(--freetaz-green)";
       cepStatus.textContent = "✅ Endereço preenchido! Adicione o número se precisar.";
     } catch(e){
@@ -1449,26 +1454,39 @@ const lanchinhoImages = {
   document.getElementById("loc-btn").addEventListener("click", () => {
     const status = document.getElementById("loc-status");
     const input  = document.getElementById("localizacao");
-    if(!navigator.geolocation){
+    if(!navigator.geolocation || !window.isSecureContext){
       status.style.color = "var(--kro-red)";
-      status.textContent = "Seu aparelho não permite localização automática. Cole o link do Maps manualmente.";
+      status.textContent = "Localização automática indisponível neste navegador. Cole o link do Google Maps manualmente.";
       return;
     }
     status.style.color = "var(--cream-dim)";
-    status.textContent = "📍 Obtendo a localização do comércio...";
+    status.textContent = "📍 Obtendo a localização do comércio... (pode levar alguns segundos)";
+
+    function sucesso(pos){
+      const lat = pos.coords.latitude.toFixed(6);
+      const lng = pos.coords.longitude.toFixed(6);
+      input.value = `https://www.google.com/maps?q=${lat},${lng}`;
+      status.style.color = "var(--freetaz-green)";
+      status.textContent = "✅ Localização capturada!";
+    }
+    function falha(err){
+      let m = "❌ Não foi possível obter a localização. Cole o link do Google Maps manualmente.";
+      if(err && err.code === 1){ m = "❌ Permissão negada. Autorize o acesso à localização (cadeado ao lado do endereço → Localização → Permitir) e tente de novo."; }
+      else if(err && err.code === 2){ m = "❌ Localização indisponível. Ative o GPS/Localização do aparelho e tente novamente."; }
+      else if(err && err.code === 3){ m = "❌ Demorou demais. Tente de novo, de preferência a céu aberto, ou cole o link do Maps."; }
+      status.style.color = "var(--kro-red)";
+      status.textContent = m;
+    }
+    // 1a tentativa: alta precisao; se falhar, 2a tentativa mais tolerante
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const lat = pos.coords.latitude.toFixed(6);
-        const lng = pos.coords.longitude.toFixed(6);
-        input.value = `https://www.google.com/maps?q=${lat},${lng}`;
-        status.style.color = "var(--freetaz-green)";
-        status.textContent = "✅ Localização capturada!";
+      sucesso,
+      () => {
+        navigator.geolocation.getCurrentPosition(
+          sucesso, falha,
+          { enableHighAccuracy: false, timeout: 25000, maximumAge: 60000 }
+        );
       },
-      (err) => {
-        status.style.color = "var(--kro-red)";
-        status.textContent = "❌ Não foi possível obter a localização. Ative o GPS e permita o acesso, ou cole o link manualmente.";
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
     );
   });
 
@@ -1484,6 +1502,7 @@ const lanchinhoImages = {
     const nome = document.getElementById("nome").value.trim();
     const endereco = document.getElementById("endereco").value.trim();
     const numero = document.getElementById("numero").value.trim();
+    const cidade = document.getElementById("cidade").value.trim();
     const whatsappCliente = document.getElementById("whatsapp-cliente").value.trim();
     const obs = document.getElementById("obs").value.trim();
     const localizacao = document.getElementById("localizacao").value.trim();
@@ -1507,6 +1526,9 @@ const lanchinhoImages = {
       msg += `*Endereço:* ${enderecoCompleto}\n`;
     } else if(numero){
       msg += `*Número:* ${numero}\n`;
+    }
+    if(cidade){
+      msg += `*Cidade:* ${cidade}\n`;
     }
     if(localizacao){
       msg += `*📍 Localização do comércio:* ${localizacao}\n`;
